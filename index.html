@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="marea: nebbia and onde as one piece, drifting between dub techno and ambient on a single tide.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>marea</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&display=swap">
+<style>
+/* Layout: one quiet column over a full-screen drawing. The lines of the music cross the whole page when it is ambient and gather into rings inside the circle as it turns into dub techno. One thin line under the circle says where the tide is */
+:root{
+  --bg:#02040F; --ink:#E5DADA; --mute:#968E96; --line:#152139; --amber:#E59500; --wine:#D2577F; --night:#4A8CC4;
+  --font:"Helvetica Neue","IBM Plex Sans",Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--font);font-weight:400;font-size:16px;line-height:1.4;font-variant-numeric:tabular-nums;
+  padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:16px 28px}
+.wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:20px;position:relative;z-index:1}
+#dial{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:block}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+
+header{display:flex;justify-content:space-between;align-items:baseline}
+h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
+.titleblock{display:flex;flex-direction:column;gap:2px}
+.tag{font-size:.78rem;color:var(--mute);letter-spacing:.02em}
+#clock{color:var(--mute);font-size:.95rem}
+
+.stage{display:block;width:100%;max-width:min(100%,54vh);aspect-ratio:1;margin:0 auto;position:relative;border-radius:50%;
+  -webkit-tap-highlight-color:transparent}
+.stage:focus-visible{outline:1px solid var(--amber);outline-offset:3px}
+#tap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:300;font-size:1.9rem;letter-spacing:-.02em;
+  color:var(--mute);pointer-events:none}
+
+.cap{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:-6px;text-align:center;min-height:4.4rem}
+#nowA{font-weight:300;font-size:1.9rem;letter-spacing:-.02em}
+#nowB{color:var(--mute);font-size:.92rem;text-transform:lowercase}
+.hint{font-size:.88rem;color:var(--mute);margin:6px auto 0;max-width:42ch;text-align:center}
+
+/* the tide: where the music is between the two, and whether it moves on its own */
+.tide{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;font-size:.8rem;letter-spacing:.04em;color:var(--mute)}
+.tide input{-webkit-appearance:none;appearance:none;width:100%;min-width:0;height:28px;background:none;margin:0;cursor:pointer}
+.tide input::-webkit-slider-runnable-track{height:1px;background:var(--mute);opacity:.5}
+.tide input::-moz-range-track{height:1px;background:var(--mute);opacity:.5}
+.tide input::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--amber);margin-top:-6px;border:0}
+.tide input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--amber);border:0}
+.tide input:focus-visible{outline:1px solid var(--amber);outline-offset:2px}
+.tide.held input::-webkit-slider-thumb{background:var(--ink)}
+.tide.held input::-moz-range-thumb{background:var(--ink)}
+#drift{display:block;margin:-10px auto 0;font-size:.8rem;letter-spacing:.04em;color:var(--amber);padding:4px 8px}
+#drift[aria-pressed="false"]{color:var(--mute)}
+#drift:hover{color:var(--ink)}
+#drift:focus-visible{outline:1px solid var(--amber);outline-offset:2px}
+
+.foot{display:flex;justify-content:center;gap:10px;padding:6px 16px 0;font-size:.8rem;letter-spacing:.04em;color:var(--mute)}
+.foot a{color:inherit;text-decoration:none;border-bottom:1px solid transparent;padding-bottom:1px}
+.foot a:hover,.foot a:focus-visible{color:var(--amber);border-bottom-color:currentColor;outline:none}
+</style>
+</head>
+<body>
+
+<canvas id="dial" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header>
+    <div class="titleblock">
+      <h1>marea</h1>
+      <span class="tag">never-ending tide of ambient and dub techno</span>
+    </div>
+    <span id="clock" hidden>00:00:00</span>
+  </header>
+
+  <button class="stage" id="toggle" type="button" aria-pressed="false" aria-label="Start">
+    <span id="tap">tap</span>
+  </button>
+
+  <div class="cap">
+    <span id="nowA" hidden>f min</span>
+    <span id="nowB" hidden>track 1, bar 1 of 96 at 58 bpm</span>
+    <p class="hint" id="hint">Tap the circle. It starts as slow ambient, rises into dub techno and falls back, on its own.</p>
+  </div>
+
+  <div class="tide" id="tideRow">
+    <span>onde</span>
+    <input id="tide" type="range" min="0" max="100" value="12" aria-label="Where the music is, from ambient to dub techno">
+    <span>nebbia</span>
+  </div>
+  <button id="drift" type="button" aria-pressed="true">drifting</button>
+
+  <footer class="foot"><a href="https://github.com/phonk/marea">source on github</a><span aria-hidden="true">·</span><a href="https://phonk.github.io/" target="_blank" rel="noopener">phonk</a></footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const chance = p => Math.random() < p;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const ss = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+  const KEYS = ['c', 'c♯', 'd', 'e♭', 'e', 'f', 'f♯', 'g', 'a♭', 'a', 'b♭', 'b'];
+  /* everything is counted from the root of a minor key, in semitones */
+  const CHORDS = [[0, 3, 7, 10], [0, 3, 7, 10, 14], [0, 7, 10, 15], [0, 5, 7, 10], [0, 3, 10, 14], [0, 7, 15, 17], [0, 3, 7, 14]];
+  const VOICINGS = [[0, 7, 15, 22], [0, 7, 10, 15], [-12, 0, 7, 15], [0, 7, 15, 19]];
+  const MELS = [[14, 15], [14, 15, 14, 12], [10, 8], [19, 20, 19, 17], [14, 14, 15, 12]];
+  const FLOOR = [[0, 0, -4, -4], [0, 0, 0, -4, 0, 0, -2, -2], [0, -4, -7, -2], [0, 0, -7, -7], [0, 0, 0, 0], [0, 0, -4, -2]];
+  const BASS_PATTERNS = [[2, 6, 10, 14], [3, 6, 11, 14], [2, 7, 10], [6, 14], [2, 3, 10, 11], [3, 10], [2, 6, 11]];
+  const SUBPATS = [
+    [1, 0, 0, 0, .6, 0, 0, 0, .8, 0, 0, 0, .6, 0, 0, 0],
+    [1, 0, .5, 0, .7, 0, .5, 0, .9, 0, .5, 0, .7, 0, .5, 0],
+    [1, 0, 0, .5, 0, 0, .7, 0, 0, 0, .6, 0, 0, .5, 0, 0],
+    [1, 0, 0, 0, 0, 0, .6, 0, .8, 0, 0, 0, 0, 0, .5, 0]
+  ];
+
+  let ac = null, mix, master, bed, noiseBuf, crackleBuf, irBuf;
+  let decks = [], cur = 0, curL = 96, curT = 16, trackNo = 0;
+  let step = 0, nextTime = 0, baseBpm = 114, t0 = 0, bpmNow = 114;
+  let playing = false, worker = null, fallbackTimer = null, silentEl = null;
+  /* the tide: 0 is onde, 1 is nebbia */
+  let x = 0.12, hold = false, manual = 0.12, tideP = 1500;
+  const events = [];
+
+  /* ---------- raw material ---------- */
+  function makeNoise(seconds) {
+    const b = ac.createBuffer(1, ac.sampleRate * seconds, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  }
+  function makeCrackle(seconds) {
+    const b = ac.createBuffer(1, ac.sampleRate * seconds, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() < 0.0005 ? (Math.random() * 2 - 1) : 0;
+    return b;
+  }
+  function makeImpulse(seconds) {
+    const sr = ac.sampleRate, n = Math.floor(sr * seconds), b = ac.createBuffer(2, n, sr);
+    for (let c = 0; c < 2; c++) {
+      const d = b.getChannelData(c); let y = 0;
+      for (let i = Math.floor(sr * 0.018); i < n; i++) {
+        const t = i / sr, v = (Math.random() * 2 - 1) * Math.exp(-t * 0.9);
+        const a = 0.5 * Math.exp(-t * 0.75) + 0.05;   /* the tail gets darker as it dies */
+        y += a * (v - y); d[i] = y;
+      }
+    }
+    return b;
+  }
+  function tanhCurve(k, out) {
+    const c = new Float32Array(1025);
+    for (let i = 0; i < 1025; i++) c[i] = Math.tanh((i / 512 - 1) * k) * out;
+    return c;
+  }
+
+  /* ---------- a deck: one track, with everything it may need at either end of the tide ---------- */
+  class Deck {
+    constructor(i) {
+      this.i = i;
+      const g = v => { const n = ac.createGain(); n.gain.value = v; return n; };
+      const bq = (type, f, q) => { const n = ac.createBiquadFilter(); n.type = type; n.frequency.value = f; n.Q.value = q; return n; };
+      const lfo = (f, depth, target) => { const o = ac.createOscillator(); o.frequency.value = f; const og = g(depth); o.connect(og); og.connect(target); o.start(); };
+      this.g = g; this.bq = bq;
+      this.out = g(0); this.lp = bq('lowpass', 18000, 0.5); this.pre = g(1);
+      this.pre.connect(this.lp); this.lp.connect(this.out); this.out.connect(mix);
+      this.duck = g(1); this.duck.connect(this.pre);
+      this.drum = g(1); this.drum.connect(this.pre);
+      this.subBus = g(0.5); this.subBus.connect(this.pre);
+
+      /* stabs: overdrive, tape warble, phaser */
+      this.chordBus = g(1); this.chordBus.connect(this.duck);
+      this.drive = g(2); this.dirt = ac.createWaveShaper();
+      { const dc = new Float32Array(1025); for (let k = 0; k < 1025; k++) { const v = (k / 512 - 1) * 3; dc[k] = Math.tanh(v + 0.18 * v * v); } this.dirt.curve = dc; this.dirt.oversample = '2x'; }
+      const dirtOut = g(0.34), hp = bq('highpass', 35, 0.5);
+      this.warb = ac.createDelay(0.2); this.warb.delayTime.value = 0.03;
+      this.warbDepth = g(1); this.warbDepth.connect(this.warb.delayTime);
+      lfo(rnd(0.35, 0.6), 0.0028, this.warbDepth); lfo(rnd(0.07, 0.13), 0.006, this.warbDepth); lfo(rnd(6, 8.5), 0.00006, this.warbDepth);
+      this.drive.connect(this.dirt); this.dirt.connect(dirtOut); dirtOut.connect(hp); hp.connect(this.warb);
+      const phDepth = g(600); { const o = ac.createOscillator(); o.frequency.value = rnd(0.05, 0.2); o.connect(phDepth); o.start(); }
+      let node = this.warb;
+      for (let k = 0; k < 4; k++) { const ap = bq('allpass', 900 + k * 500, 0.7); phDepth.connect(ap.frequency); node.connect(ap); node = ap; }
+      this.warb.connect(this.chordBus); { const pm = g(0.6); node.connect(pm); pm.connect(this.chordBus); }
+
+      /* pads: their own wobbling tape, and a level that follows the tide */
+      this.padBus = g(1);
+      const pw = ac.createDelay(0.2); pw.delayTime.value = 0.03;
+      lfo(rnd(0.3, 0.5), 0.0022, pw.delayTime); lfo(rnd(0.06, 0.11), 0.005, pw.delayTime); lfo(rnd(5.5, 7.5), 0.00005, pw.delayTime);
+      this.padOut = g(1);
+      this.padBus.connect(pw); pw.connect(this.padOut); this.padOut.connect(this.duck);
+
+      this.pingBus = g(1); { const d = g(0.5); this.pingBus.connect(d); d.connect(this.pre); }
+
+      /* the echo: filtered, saturated, never running away */
+      this.delay = ac.createDelay(2.5);
+      this.delaySend = g(0.5); this.fb = g(0.5);
+      const fbHP = bq('highpass', 280, -3); this.fbLP = bq('lowpass', 2200, -3);
+      const sat = ac.createWaveShaper(); sat.curve = tanhCurve(2, 0.9);
+      const delayOut = g(0.7);
+      this.pan = ac.createStereoPanner ? ac.createStereoPanner() : g(1);
+      this.chordBus.connect(this.delaySend); this.delaySend.connect(this.delay);
+      { const d = g(0.8); this.pingBus.connect(d); d.connect(this.delay); }
+      this.delay.connect(fbHP); fbHP.connect(this.fbLP); this.fbLP.connect(this.fb); this.fb.connect(sat); sat.connect(this.delay);
+      this.delay.connect(delayOut); delayOut.connect(this.pan); this.pan.connect(this.duck);
+      if (this.pan.pan) lfo(rnd(0.04, 0.09), 0.55, this.pan.pan);
+      lfo(0.23, 0.0018, this.delay.delayTime);
+
+      this.rev = ac.createConvolver(); this.rev.buffer = irBuf;
+      this.revSend = g(0.3); this.revIn = g(1); this.revIn.connect(this.rev);
+      { const o = g(0.55); this.rev.connect(o); o.connect(this.pre); }
+      this.chordBus.connect(this.revSend); this.revSend.connect(this.revIn);
+      [[this.delay, 0.35], [this.padOut, 0.45], [this.pingBus, 0.9]].forEach(([n, v]) => { const s = g(v); n.connect(s); s.connect(this.revIn); });
+
+      this.windOut = g(1); this.windOut.connect(this.pre); this.windOut.connect(this.revIn);
+      this.track = null; this.voices = []; this.live = [];
+    }
+
+    load(tr, bar, t, fadeBars, barDur, first) {
+      this.track = tr; this.startBar = bar; this.bn = null; this.mn = null; this.dubOut = false;
+      this.kickFrom = bar + (first ? 4 : fadeBars); this.kickUntil = Infinity;
+      const fade = Math.max(fadeBars, 2) * barDur, o = this.out.gain, f = this.lp.frequency;
+      o.cancelScheduledValues(t); o.setValueAtTime(0.0001, t); o.linearRampToValueAtTime(1, t + (first ? 3 * barDur : fade));
+      f.cancelScheduledValues(t); f.setValueAtTime(first ? 500 : 320, t); f.exponentialRampToValueAtTime(18000, t + (first ? 8 * barDur : fade));
+      this.delay.delayTime.cancelScheduledValues(t); this.delay.delayTime.setValueAtTime(tr.delaySteps * barDur / 16, t);
+      this.fb.gain.cancelScheduledValues(t); this.fb.gain.setValueAtTime(tr.fb, t);
+      this.fbLP.frequency.setValueAtTime(tr.fbTone, t);
+      this.delaySend.gain.setValueAtTime(tr.delaySend, t); this.revSend.gain.setValueAtTime(tr.revSend, t);
+      this.warbDepth.gain.setValueAtTime(tr.warble, t);
+      this.startVoices(t);
+    }
+
+    startVoices(t) {
+      const tr = this.track, g = this.g, bq = this.bq;
+      this.voices = []; this.live = [];
+      const notes = tr.voicing.map(n => ({ n, mel: false })).concat([{ n: tr.mel[0], mel: true }]);
+      const lv = 0.2 * tr.padLevel / Math.sqrt(notes.length);
+      /* every voice of the pad swells and fades on its own clock */
+      for (const { n, mel } of notes) {
+        const f = bq('lowpass', tr.padCut * (mel ? 1.5 : 1), 0.7), vg = g(lv * 0.55);
+        const per = rnd(18, 46), ts = t + rnd(0, per * 0.5);
+        const lf = ac.createOscillator(), lg = g(lv * 0.45); lf.frequency.value = 1 / per; lf.connect(lg); lg.connect(vg.gain); lf.start(ts);
+        const oscs = [-1, 1].map(s => {
+          const o = ac.createOscillator(); o.type = mel && s > 0 ? 'triangle' : 'sawtooth';
+          o.frequency.value = mtof(tr.base + n); o.detune.value = s * rnd(4, 9); o.connect(f); o.start(t); return o;
+        });
+        f.connect(vg); vg.connect(this.padBus);
+        this.voices.push({ n, mel, per, ts, f, oscs });
+        this.live.push(lf, ...oscs);
+      }
+      /* the floor: a low sine that is always there, and that the pulse pushes */
+      this.sub = ac.createOscillator(); this.sub2 = ac.createOscillator();
+      const s2 = g(0.2), slp = bq('lowpass', 240, 0.5);
+      this.subGain = g(0.1); this.subBase = 0.1;
+      this.sub.connect(this.subGain); this.sub2.connect(s2); s2.connect(this.subGain); this.subGain.connect(slp); slp.connect(this.subBus);
+      this.sub.start(t); this.sub2.start(t); this.live.push(this.sub, this.sub2);
+      if (tr.wind) {
+        const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+        const bp = bq('bandpass', tr.windF, 1.5), wg = g(tr.wind * 0.6);
+        const a = ac.createOscillator(), ag = g(tr.wind * 0.4); a.frequency.value = 1 / rnd(15, 40); a.connect(ag); ag.connect(wg.gain);
+        const b = ac.createOscillator(), bg = g(tr.windF * 0.4); b.frequency.value = 1 / rnd(20, 50); b.connect(bg); bg.connect(bp.frequency);
+        src.connect(bp); bp.connect(wg); wg.connect(this.windOut);
+        src.start(t, Math.random()); a.start(t); b.start(t); this.live.push(src, a, b);
+      }
+    }
+
+    /* the mix-out: kick and bass leave, what is left sinks into its own echo */
+    beginOut(bar, t, halfBars, barDur) {
+      this.kickUntil = bar; this.dubOut = true;
+      const hs = halfBars * barDur, o = this.out.gain, f = this.lp.frequency;
+      o.cancelScheduledValues(t); o.setValueAtTime(1, t); o.linearRampToValueAtTime(0.7, t + hs * 0.5); o.linearRampToValueAtTime(0.0001, t + hs + 2 * barDur);
+      f.cancelScheduledValues(t); f.setValueAtTime(18000, t); f.exponentialRampToValueAtTime(600, t + hs);
+      this.fb.gain.setTargetAtTime(0.62, t, hs / 3);
+    }
+    end(t) {
+      this.live.forEach(n => { try { n.stop(t + 3 * 60 / bpmNow * 4); } catch (e) {} });
+      this.live = []; this.voices = []; this.track = null;
+    }
+
+    playStep(bar, s, t, sd) {
+      const tr = this.track; if (!tr) return;
+      const rb = bar - this.startBar, k = ss(0.2, 0.7, x);
+      if (s === 0) {
+        /* low tide: the floor moves under the chord. High tide: it stays, and the stabs lean on the fifth now and then */
+        let bn = tr.bassBase + (x < 0.5 ? tr.floor[Math.floor(rb / 8) % tr.floor.length] : 0); if (bn < 29) bn += 12;
+        if (bn !== this.bn) {
+          const first = this.bn === null; this.bn = bn;
+          if (first) { this.sub.frequency.setValueAtTime(mtof(bn), t); this.sub2.frequency.setValueAtTime(mtof(bn + 12), t); }
+          else { this.sub.frequency.setTargetAtTime(mtof(bn), t, 0.15); this.sub2.frequency.setTargetAtTime(mtof(bn + 12), t, 0.15); }
+        }
+        const mn = tr.mel[Math.floor(rb / tr.melBars) % tr.mel.length];
+        if (mn !== this.mn) {
+          this.mn = mn; const v = this.voices.find(q => q.mel);
+          if (v) { v.n = mn; v.oscs.forEach(o => o.frequency.setTargetAtTime(mtof(tr.base + mn), t, 0.35)); }
+        }
+        const drift = Math.pow(2, 0.5 * Math.sin(t / tr.p2) + 0.25 * Math.sin(t / tr.p1 + 1));
+        this.voices.forEach(v => v.f.frequency.setTargetAtTime(tr.padCut * (v.mel ? 1.5 : 1) * drift, t, 1.5));
+        this.padOut.gain.setTargetAtTime(lerp(1, 0.3, ss(0.3, 0.9, x)), t, 2);
+        this.windOut.gain.setTargetAtTime(1 - ss(0.5, 0.9, x), t, 2);
+        this.subBase = 0.1 * (1 - 0.85 * ss(0.4, 0.8, x)); this.subGain.gain.setTargetAtTime(this.subBase, t + 0.3, 1);
+        this.subBus.gain.setTargetAtTime(0.5 * tr.subLevel, t, 1);
+        this.drive.gain.setTargetAtTime(lerp(1.2, tr.drive, k), t, 1);
+        this.delay.delayTime.setTargetAtTime(tr.delaySteps * sd, t, 0.6);
+        if (!this.dubOut) this.fb.gain.setTargetAtTime(clamp(tr.fb + 0.06 * Math.sin(t / tr.fbPeriod), 0.3, 0.58), t, 1);
+        this.fbLP.frequency.setTargetAtTime(clamp(tr.fbTone * Math.pow(2, 1.1 * Math.sin(t / tr.p2 + 1)), 600, 4500), t, 1);
+        if (rb > 0 && rb % 16 === 0) mutate(tr.stab[chance(0.5) ? 0 : 1]);
+      }
+      const low = bar >= this.kickFrom && bar < this.kickUntil && !tr.breaks.has(rb);
+      const kx = ss(0.4, 0.65, x), bx = ss(0.5, 0.75, x), px = 1 - ss(0.4, 0.62, x), hx = ss(0.28, 0.55, x), ax = 1 - ss(0.5, 0.9, x);
+      /* the same beat, twice: a slow pulse on the sub at low tide, a kick at high tide */
+      if (low && px > 0.02 && s % 2 === 0) { const v = tr.subPat[((rb % 2) * 16 + s) / 2]; if (v > 0) this.pulse(t, v * px, tr); }
+      if (low && kx > 0.02 && s % 4 === 0 && (x >= 0.55 || s % 8 === 0)) this.kick(t, tr, kx);
+      if (low && bx > 0.02 && tr.bassSteps.includes(s) && chance(0.94)) this.bass(t, sd, tr, bx);
+      if (hx > 0.02 && !tr.hatsOff.has(Math.floor(rb / 8))) {
+        if (s % 4 === 2 && tr.openHat && x > 0.5) this.hat(t, tr.hatLevel * hx, tr.hatDecay * 2.2, tr.hatTone);
+        else if (chance(tr.hatMask[s] * hx)) this.hat(t, tr.hatLevel * hx * rnd(0.3, 0.7), tr.hatDecay, tr.hatTone * 1.15);
+      }
+      if (tr.clap && low && x > 0.7 && (s === 4 || s === 12)) this.clap(t);
+      const vel = tr.stab[rb % 2][s];
+      if (vel > 0 && chance(0.4 + 0.5 * k)) this.stab(t, vel * (0.3 + 0.7 * ss(0.15, 0.6, x)), x >= 0.5 ? tr.prog[rb % tr.prog.length] : 0, tr, k);
+      if (s % 4 === 0 && chance(tr.ping * ax)) this.ping(t, tr);
+      if (tr.tick && chance(tr.tick * ax * 0.5)) this.tick(t);
+    }
+
+    pulse(t, vel, tr) {
+      const gn = this.subGain.gain;
+      gn.setTargetAtTime(this.subBase + 0.8 * vel, t, 0.012); gn.setTargetAtTime(this.subBase, t + 0.04, tr.subDecay);
+      this.duck.gain.setTargetAtTime(1 - 0.3 * vel, t, 0.01); this.duck.gain.setTargetAtTime(1, t + 0.05, 0.18);
+      if (bed) { bed.gain.setTargetAtTime(1 - 0.4 * vel, t, 0.01); bed.gain.setTargetAtTime(1, t + 0.05, 0.2); }
+      events.push({ t, kind: 'pulse', vel });
+    }
+    kick(t, tr, lv) {
+      const o = ac.createOscillator(), gn = ac.createGain();
+      o.frequency.setValueAtTime(tr.kickTune * 3.2, t); o.frequency.exponentialRampToValueAtTime(tr.kickTune, t + 0.09);
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(0.85 * lv, t + 0.003); gn.gain.exponentialRampToValueAtTime(0.001, t + tr.kickDecay);
+      o.connect(gn); gn.connect(this.drum); o.start(t); o.stop(t + tr.kickDecay + 0.05);
+      this.duck.gain.setTargetAtTime(1 - 0.7 * lv, t, 0.004); this.duck.gain.setTargetAtTime(1, t + 0.045, tr.pump);
+      if (bed) { bed.gain.setTargetAtTime(1 - 0.6 * lv, t, 0.004); bed.gain.setTargetAtTime(1, t + 0.045, 0.13); }
+      events.push({ t, kind: 'kick', lv });
+    }
+    bass(t, sd, tr, lv) {
+      const f = mtof(tr.bassBase + (chance(0.9) ? 0 : 12));
+      const o = ac.createOscillator(), o2 = ac.createOscillator(), g2 = ac.createGain(), lp = ac.createBiquadFilter(), gn = ac.createGain();
+      o.type = 'sine'; o.frequency.value = f; o2.type = 'triangle'; o2.frequency.value = f * 2; g2.gain.value = 0.22;
+      lp.type = 'lowpass'; lp.frequency.value = tr.bassCut;
+      const len = sd * tr.bassLen;
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(0.42 * lv, t + 0.01); gn.gain.setValueAtTime(0.42 * lv, t + len); gn.gain.setTargetAtTime(0, t + len, 0.04);
+      o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(gn); gn.connect(this.duck);
+      o.start(t); o2.start(t); o.stop(t + len + 0.4); o2.stop(t + len + 0.4);
+    }
+    hat(t, level, decay, tone) {
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = tone;
+      const gn = ac.createGain(); gn.gain.setValueAtTime(level, t); gn.gain.exponentialRampToValueAtTime(0.0005, t + decay);
+      src.connect(hp); hp.connect(gn); gn.connect(this.drum); src.start(t, Math.random() * 1.5, decay + 0.05);
+    }
+    clap(t) {
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.8;
+      const gn = ac.createGain(); gn.gain.setValueAtTime(0.1, t); gn.gain.exponentialRampToValueAtTime(0.0005, t + 0.13);
+      src.connect(bp); bp.connect(gn); gn.connect(this.chordBus); src.start(t, Math.random() * 1.5, 0.2);
+    }
+    /* soft and slow at low tide, short and rough at high tide */
+    stab(t, vel, shift, tr, k) {
+      const drift = 1.2 * Math.sin(t / tr.p1 + tr.ph) + 0.6 * Math.sin(t / tr.p2);
+      const cut = clamp(tr.cut * lerp(0.75, 1, k) * Math.pow(2, drift) * rnd(0.82, 1.2), 140, 5000);
+      const dec = lerp(Math.max(tr.decay, 0.3) * 1.4, tr.decay, k), fdec = lerp(Math.max(tr.fDecay, 0.3), tr.fDecay, k), att = lerp(0.02, 0.004, k);
+      const f = ac.createBiquadFilter(); f.type = tr.stabType; f.Q.value = tr.stabType === 'bandpass' ? tr.q * 0.4 : tr.q;
+      f.frequency.setValueAtTime(Math.min(cut + tr.envAmt * lerp(0.3, 1, k) * vel, 9000), t); f.frequency.exponentialRampToValueAtTime(cut, t + fdec);
+      const gn = ac.createGain(), n = tr.chord.length * 2, end = t + dec * 3 + 0.2;
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vel * 0.3 / Math.sqrt(n), t + att); gn.gain.setTargetAtTime(0, t + att + 0.004, dec / 3);
+      for (const iv of tr.chord) for (const d of [-tr.detune, tr.detune]) {
+        const o = ac.createOscillator(); o.type = tr.wave; o.frequency.value = mtof(tr.base + iv + shift); o.detune.value = d + rnd(-2, 2);
+        o.connect(f); o.start(t); o.stop(end);
+      }
+      if (k > 0.05) {
+        const ns = ac.createBufferSource(); ns.buffer = noiseBuf; ns.loop = true;
+        const ng = ac.createGain(); ng.gain.value = n * tr.grit * 0.4 * k; ns.connect(ng); ng.connect(f); ns.start(t, Math.random() * 1.5); ns.stop(end);
+      }
+      f.connect(gn); gn.connect(this.drive);
+      events.push({ t, kind: 'stab', vel, d: this.delay.delayTime.value, fb: this.fb.gain.value });
+    }
+    ping(t, tr) {
+      let m = tr.base + pick(tr.voicing.concat(tr.mel)) + pick([12, 24]); while (m > 86) m -= 12;
+      const o = ac.createOscillator(), o2 = ac.createOscillator(), g2 = ac.createGain(), gn = ac.createGain(), dec = rnd(1.2, 2.6);
+      o.type = 'sine'; o.frequency.value = mtof(m); o2.type = 'triangle'; o2.frequency.value = mtof(m) * 2.005; g2.gain.value = 0.15;
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(rnd(0.025, 0.05), t + 0.006); gn.gain.setTargetAtTime(0, t + 0.02, dec / 3);
+      o.connect(gn); o2.connect(g2); g2.connect(gn); gn.connect(this.pingBus);
+      o.start(t); o2.start(t); o.stop(t + dec * 2); o2.stop(t + dec * 2);
+      events.push({ t, kind: 'ping', h: clamp((m - 60) / 26, 0, 1) });
+    }
+    tick(t) {
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = rnd(3000, 7000); bp.Q.value = 3;
+      const gn = ac.createGain(); gn.gain.setValueAtTime(rnd(0.02, 0.05), t); gn.gain.exponentialRampToValueAtTime(0.0004, t + 0.03);
+      src.connect(bp); bp.connect(gn); gn.connect(this.pingBus); src.start(t, Math.random() * 1.5, 0.06);
+    }
+  }
+
+  /* ---------- a track ---------- */
+  function weightedStep() {
+    const r = Math.random();
+    if (r < 0.45) return pick([2, 6, 10, 14]);
+    if (r < 0.9) return pick([1, 3, 5, 7, 9, 11, 13, 15]);
+    return pick([0, 4, 8, 12]);
+  }
+  function mutate(p) {
+    const on = []; p.forEach((v, i) => { if (v > 0) on.push(i); });
+    if (on.length > 1 || (on.length === 1 && chance(0.5))) p[pick(on)] = 0;
+    let s; do { s = weightedStep(); } while (p[s] > 0);
+    p[s] = rnd(0.6, 1);
+  }
+  function newTrack(prevRoot) {
+    const root = prevRoot == null ? Math.floor(Math.random() * 12) : (prevRoot + pick([0, 7, 7, 5, 5, 3, 9, 2, 10])) % 12;
+    const base = root <= 6 ? 48 + root : 36 + root;
+    const b1 = new Array(16).fill(0);
+    for (let i = pick([1, 2, 2, 3, 3, 4]); i > 0; i--) b1[weightedStep()] = rnd(0.6, 1);
+    const b2 = b1.slice(); if (chance(0.6)) mutate(b2);
+    const breaks = new Set(), hatsOff = new Set();
+    for (let k = 32; k < 240; k += 16) if (chance(0.28)) { const n = pick([4, 4, 8]); for (let i = 1; i <= n; i++) breaks.add(k - i); }
+    for (let k = 1; k < 30; k++) if (chance(0.18)) hatsOff.add(k);
+    const long = chance(0.3), fifth = base >= 50 ? -5 : 7, pn = pick([8, 16, 16]);
+    const prog = new Array(pn).fill(0); prog[pn - 1] = fifth; if (pn === 16 && chance(0.5)) prog[pn - 2] = fifth;
+    return {
+      root, base, bassBase: 31 + ((root + 5) % 12),
+      chord: pick(CHORDS), voicing: pick(VOICINGS), mel: pick(MELS), melBars: pick([8, 16]), floor: pick(FLOOR), prog,
+      stab: [b1, b2], wave: chance(0.75) ? 'sawtooth' : 'square', detune: rnd(4, 14), stabType: chance(0.7) ? 'lowpass' : 'bandpass',
+      cut: rnd(280, 800), envAmt: rnd(700, 3200), q: rnd(2, 8),
+      decay: long ? rnd(0.45, 0.9) : rnd(0.09, 0.3), fDecay: long ? rnd(0.25, 0.6) : rnd(0.06, 0.25),
+      p1: rnd(6, 11), p2: rnd(15, 24), ph: rnd(0, 6.28), drive: rnd(2.5, 7), grit: rnd(0.15, 0.5), warble: rnd(0.6, 1.6),
+      delaySteps: pick([3, 3, 3, 2, 6]), fb: rnd(0.36, 0.52), fbPeriod: rnd(9, 17), fbTone: rnd(1400, 3200),
+      delaySend: rnd(0.4, 0.75), revSend: rnd(0.2, 0.45),
+      kickTune: rnd(45, 52), kickDecay: rnd(0.26, 0.42), pump: rnd(0.07, 0.13),
+      bassSteps: pick(BASS_PATTERNS), bassCut: rnd(170, 320), bassLen: rnd(1.1, 1.9),
+      openHat: chance(0.8), hatMask: new Array(16).fill(0).map(() => (chance(0.5) ? rnd(0.3, 0.9) : 0)),
+      hatLevel: rnd(0.05, 0.09), hatDecay: rnd(0.025, 0.06), hatTone: rnd(6500, 9000), clap: chance(0.45),
+      padCut: rnd(380, 850), padLevel: rnd(0.85, 1.1), subPat: pick(SUBPATS), subDecay: rnd(0.14, 0.32), subLevel: rnd(0.75, 1),
+      ping: rnd(0.02, 0.08), tick: chance(0.6) ? rnd(0.008, 0.04) : 0, wind: chance(0.75) ? rnd(0.02, 0.05) : 0, windF: rnd(300, 1200),
+      breaks, hatsOff
+    };
+  }
+  /* slow music takes its time: tracks are longer at low tide */
+  function plan() { curT = pick([16, 16, 32]); curL = x < 0.4 ? pick([128, 144, 160]) : pick([64, 80, 96, 112]); }
+  const autoTide = el => clamp(0.56 - 0.52 * Math.cos(2 * Math.PI * el / tideP + 0.55) + 0.1 * Math.sin(2 * Math.PI * el / (tideP / 3.3)), 0, 1);
+
+  /* ---------- clock ---------- */
+  function onBar(bar, t, barDur) {
+    const target = hold ? manual : autoTide(t - t0), rate = hold ? 0.06 : 0.03;
+    x += clamp(target - x, -rate, rate);
+    let c = decks[cur];
+    if (!c.track) { plan(); trackNo = 1; c.load(newTrack(null), bar, t, 0, barDur, true); }
+    let rel = bar - c.startBar;
+    if (rel === curL) { c.end(t); cur = 1 - cur; c = decks[cur]; trackNo++; plan(); rel = bar - c.startBar; }
+    const other = decks[1 - cur];
+    if (rel === curL - curT) other.load(newTrack(c.track.root), bar, t, curT / 2, barDur, false);
+    if (rel === curL - curT / 2) c.beginOut(bar, t, curT / 2, barDur);
+    const key = KEYS[c.track.root] + ' min' + (other.track ? ' → ' + KEYS[other.track.root] + ' min' : '');
+    events.push({ t, kind: 'bar', bpm: bpmNow, key, track: trackNo, rel, L: curL, dur: barDur, x });
+  }
+  function tick() {
+    if (!playing || !ac || ac.state !== 'running') return;
+    const now = ac.currentTime;
+    if (nextTime < now) nextTime = now + 0.05;
+    const ahead = document.hidden ? 1.8 : 0.3;
+    while (nextTime < now + ahead) {
+      const el = nextTime - t0;
+      bpmNow = baseBpm + 3 * Math.sin(el / 143) + 1.5 * Math.sin(el / 60);
+      const sd = 60 / bpmNow / 4, bar = Math.floor(step / 16), s = step % 16;
+      if (s === 0) onBar(bar, nextTime, sd * 16);
+      decks[0].playStep(bar, s, nextTime, sd);
+      decks[1].playStep(bar, s, nextTime, sd);
+      nextTime += sd; step++;
+    }
+    if (events.length > 400) events.splice(0, events.length - 400);
+  }
+
+  /* ---------- start / stop ---------- */
+  /* a silent media element keeps the audio session alive on phones, so it goes on with the screen off */
+  function silentWav() {
+    const n = 4410, b = new Uint8Array(44 + n * 2), v = new DataView(b.buffer);
+    const w = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 44100, true); v.setUint32(28, 88200, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    let t = ''; for (let i = 0; i < b.length; i++) t += String.fromCharCode(b[i]);
+    return 'data:audio/wav;base64,' + btoa(t);
+  }
+  function media(on) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      if (on) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'marea', artist: 'never-ending tide of ambient and dub techno' });
+        navigator.mediaSession.setActionHandler('play', () => { if (!playing) start(); });
+        navigator.mediaSession.setActionHandler('pause', () => { if (playing) stop(); });
+        navigator.mediaSession.setActionHandler('stop', () => { if (playing) stop(); });
+      }
+      navigator.mediaSession.playbackState = on ? 'playing' : 'paused';
+    } catch (e) {}
+  }
+  const resumeSoon = (c, ms) => Promise.race([c.resume().then(() => true, () => false), new Promise(r => setTimeout(() => r(false), ms))]);
+  async function onReturn() {
+    if (document.hidden || !playing || !ac || ac.state === 'running') return;
+    const c = ac;
+    if (await resumeSoon(c, 400) && c.state === 'running') return;
+    if (playing && ac === c) stop();
+  }
+  document.addEventListener('visibilitychange', onReturn);
+  window.addEventListener('pageshow', onReturn); window.addEventListener('focus', onReturn);
+
+  function start() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
+    ac.resume();
+    try {
+      silentEl = silentEl || new Audio(silentWav());
+      silentEl.loop = true; silentEl.setAttribute('playsinline', ''); silentEl.volume = 0.01;
+      silentEl.play().catch(() => {});
+    } catch (e) {}
+    media(true);
+    noiseBuf = makeNoise(2); crackleBuf = makeCrackle(5); irBuf = makeImpulse(6);
+    master = ac.createGain(); master.gain.value = 0;
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.01; comp.release.value = 0.25;
+    mix = ac.createGain(); mix.gain.value = 0.85;
+    /* master tape: wow and flutter, saturation, a duller top, a little head bump */
+    const td = ac.createDelay(0.2); td.delayTime.value = 0.03;
+    [[0.45, 0.0009], [0.11, 0.002], [7.3, 0.00005]].forEach(([f, d]) => {
+      const o = ac.createOscillator(), og = ac.createGain(); o.frequency.value = f; og.gain.value = d; o.connect(og); og.connect(td.delayTime); o.start();
+    });
+    const ts = ac.createWaveShaper(); ts.curve = tanhCurve(1.6, 0.72); ts.oversample = '2x';
+    const tl = ac.createBiquadFilter(); tl.type = 'lowpass'; tl.frequency.value = 9000; tl.Q.value = -3;
+    const tb = ac.createBiquadFilter(); tb.type = 'peaking'; tb.frequency.value = 90; tb.Q.value = 0.9; tb.gain.value = 2.5;
+    const th = ac.createBiquadFilter(); th.type = 'highpass'; th.frequency.value = 24; th.Q.value = 0.5;
+    mix.connect(td); td.connect(ts); ts.connect(tl); tl.connect(tb); tb.connect(th); th.connect(comp); comp.connect(master); master.connect(ac.destination);
+    master.gain.setTargetAtTime(0.9, ac.currentTime, 0.25);
+
+    bed = ac.createGain(); bed.connect(mix);
+    const src = (buf, off) => { const s = ac.createBufferSource(); s.buffer = buf; s.loop = true; s.start(0, off); return s; };
+    const flt = (type, f) => { const n = ac.createBiquadFilter(); n.type = type; n.frequency.value = f; return n; };
+    const lvl = v => { const n = ac.createGain(); n.gain.value = v; return n; };
+    { const f = flt('lowpass', 4000), l = lvl(0.038); src(noiseBuf, 0).connect(f); f.connect(l); l.connect(bed);
+      const o = ac.createOscillator(), og = lvl(0.012); o.frequency.value = 0.06; o.connect(og); og.connect(l.gain); o.start(); }
+    { const f = flt('highpass', 900), l = lvl(0.08); src(crackleBuf, 0).connect(f); f.connect(l); l.connect(bed); }
+    { const f = flt('lowpass', 150), l = lvl(0.2); src(noiseBuf, 0.7).connect(f); f.connect(l); l.connect(bed); }
+
+    decks = [new Deck(0), new Deck(1)]; cur = 0; step = 0; trackNo = 0; events.length = 0;
+    baseBpm = rnd(110, 118); tideP = rnd(20, 32) * 60; t0 = ac.currentTime; nextTime = t0 + 0.15;
+    x = hold ? manual : autoTide(0);
+    playing = true;
+    try {
+      const code = "let i;onmessage=e=>{clearInterval(i);if(e.data==='go')i=setInterval(()=>postMessage(0),40)}";
+      worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
+      worker.onmessage = tick; worker.postMessage('go');
+    } catch (e) { worker = null; fallbackTimer = setInterval(tick, 40); }
+    tick();
+    ui(true);
+    wallStart = performance.now();
+    requestAnimationFrame(draw);
+  }
+  function stop() {
+    playing = false;
+    if (worker) { worker.postMessage('halt'); worker.terminate(); worker = null; }
+    clearInterval(fallbackTimer);
+    const old = ac; ac = null;
+    if (old) { master.gain.setTargetAtTime(0, old.currentTime, 0.4); setTimeout(() => old.close().catch(() => {}), 2500); }
+    if (silentEl) silentEl.pause();
+    media(false);
+    events.length = 0;
+    ui(false);
+  }
+  const btn = $('toggle');
+  btn.addEventListener('click', () => (playing ? stop() : start()));
+
+  /* the tide line: drag it to hold the music somewhere, tap "held" to let it drift again */
+  const tide = $('tide'), driftBtn = $('drift'), tideRow = $('tideRow');
+  function showDrift() {
+    driftBtn.setAttribute('aria-pressed', hold ? 'false' : 'true');
+    driftBtn.textContent = hold ? 'held, tap to drift' : 'drifting';
+    tideRow.classList.toggle('held', hold);
+  }
+  tide.addEventListener('input', () => { hold = true; manual = tide.value / 100; if (!playing) { x = manual; draw(); } showDrift(); });
+  driftBtn.addEventListener('click', () => { hold = !hold; if (hold) manual = x; showDrift(); });
+
+  /* ---------- the drawing: lines that cross the whole page at low tide and close into rings inside the circle at high tide ---------- */
+  const cv = $('dial'), g = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const col = n => css.getPropertyValue('--' + n).trim();
+  const INK = col('ink'), LINE = col('line'), AMBER = col('amber'), WINE = col('wine'), NIGHT = col('night');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TAU = Math.PI * 2, TOP = -Math.PI / 2;
+  const REST = [{ n: -12, l: 0.5 }, { n: 0, l: 0.7 }, { n: 7, l: 0.4 }, { n: 15, l: 0.6, mel: true }, { n: 22, l: 0.35 }];
+  let W = 0, H = 0, cx = 0, cy = 0, R0 = 100, pings = [], rings = [], pulse = 0, kickP = 0, vis = null, xv = x, wallStart = 0, lastSec = -1;
+
+  function ui(on) {
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? 'Stop' : 'Start');
+    $('tap').hidden = on; $('hint').hidden = on;
+    $('nowA').hidden = !on; $('nowB').hidden = !on; $('clock').hidden = !on;
+    if (on) { $('nowA').textContent = ' '; $('nowB').textContent = 'coming in'; $('clock').textContent = '00:00:00'; lastSec = -1; }
+    else { vis = null; pings = []; rings = []; pulse = 0; kickP = 0; requestAnimationFrame(draw); }
+  }
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!playing) draw();
+  }
+  function fmt(sec) {
+    const p = n => String(n).padStart(2, '0');
+    return p(Math.floor(sec / 3600)) + ':' + p(Math.floor(sec / 60) % 60) + ':' + p(sec % 60);
+  }
+  /* one voice: a wavy line from edge to edge at m = 0, a ring at m = 1, a horseshoe in between */
+  function voice(n, l, alpha, color, seed, time, m) {
+    const h = clamp((n + 12) / 36, 0, 1), half = Math.max(cx, W - cx) + 4;
+    const y0 = cy + R0 * 0.84 - h * R0 * 1.8, amp = 2 + R0 * 0.065 * l, rk = R0 * (0.2 + 0.7 * h), e = m * m * (3 - 2 * m);
+    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = 1 + l * 0.8;
+    g.beginPath();
+    for (let i = 0; i <= 140; i++) {
+      const u = i / 140, lx = cx + half * (u * 2 - 1), v = (lx - cx) / R0;
+      const ly = y0 + amp * Math.sin(v * (2.2 + seed % 3) + time * (0.08 + (seed % 5) * 0.012) + seed) + amp * 0.4 * Math.sin(v * 5.3 - time * 0.05 + seed * 2);
+      const th = Math.PI / 2 + TAU * u, rr = rk + amp * 0.35 * Math.sin(th * 3 + time * 0.2 + seed);
+      const px = lerp(lx, cx + rr * Math.cos(th), e), py = lerp(ly, cy + rr * Math.sin(th), e);
+      i ? g.lineTo(px, py) : g.moveTo(px, py);
+    }
+    g.stroke();
+  }
+  function draw() {
+    const wall = performance.now(), box = btn.getBoundingClientRect();
+    cx = box.left + box.width / 2; cy = box.top + box.height / 2; R0 = box.width * 0.46;
+    let now = 0, phase = 0;
+    if (playing && ac) {
+      now = ac.currentTime - (ac.outputLatency || 0);
+      while (events.length && events[0].t <= now) {
+        const e = events.shift();
+        if (e.kind === 'pulse') pulse = Math.max(pulse, e.vel);
+        else if (e.kind === 'kick') kickP = Math.max(kickP, e.lv);
+        else if (e.kind === 'ping') pings.push({ born: wall, x: rnd(-0.9, 0.9), h: e.h });
+        else if (e.kind === 'stab') { if (!still) for (let n = 0, a = e.vel * 0.42; n < 7 && a > 0.03; n++, a *= e.fb) rings.push({ born: wall + n * e.d * 1000, a }); }
+        else if (e.kind === 'bar') {
+          vis = e;
+          $('nowA').textContent = e.key;
+          $('nowB').textContent = 'track ' + e.track + ', bar ' + (e.rel + 1) + ' of ' + e.L + ' at ' + Math.round(e.x < 0.45 ? e.bpm / 2 : e.bpm) + ' bpm';
+          if (!hold && document.activeElement !== tide) tide.value = Math.round(e.x * 100);
+        }
+      }
+      if (vis && !still) phase = clamp((now - vis.t) / vis.dur, 0, 1);
+      const sec = Math.floor((wall - wallStart) / 1000);
+      if (sec !== lastSec) { lastSec = sec; $('clock').textContent = fmt(sec); }
+    }
+    xv += (x - xv) * (playing ? 0.02 : 1);
+    const m = xv, time = still ? 0 : wall / 1000, far = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy));
+    g.clearRect(0, 0, W, H);
+
+    /* the glow comes from below at low tide and from the centre of the circle at high tide */
+    const gy = lerp(cy + R0 * 1.4, cy, m), gr = lerp(Math.max(W, R0 * 2.4), R0 * 1.1, m);
+    const grad = g.createRadialGradient(cx, gy, 0, cx, gy, gr);
+    grad.addColorStop(0, NIGHT); grad.addColorStop(1, 'rgba(74,140,196,0)');
+    g.globalAlpha = 0.09 + 0.2 * Math.max(pulse, kickP * 0.6) + (playing ? 0.04 : 0); g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+    /* echoes leave the centre and die on their way out of the page */
+    rings = rings.filter(r => (wall - r.born) / 1000 < 6);
+    for (const r of rings) {
+      const age = (wall - r.born) / 1000; if (age < 0) continue;
+      const rr = R0 * 0.1 + age * (R0 / 4.6), fade = 1 - rr / far;
+      if (fade > 0) { g.globalAlpha = r.a * fade * fade * (0.25 + 0.75 * m); g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.stroke(); }
+    }
+
+    if (playing && decks.length) {
+      for (let d = 0; d < 2; d++) {
+        const dk = decks[d]; if (!dk.track) continue;
+        const lv = clamp(dk.out.gain.value, 0, 1);
+        dk.voices.forEach((v, k) => {
+          const l = now > v.ts ? 0.5 + 0.5 * Math.sin(TAU * (now - v.ts) / v.per) : 0.5;
+          voice(v.n, l, (0.1 + 0.6 * l) * lv, v.mel ? WINE : INK, d * 7 + k * 3 + 1, time, m);
+        });
+      }
+    } else REST.forEach((v, k) => voice(v.n, v.l, 0.12 + 0.3 * v.l, v.mel ? WINE : INK, k * 3 + 1, 0, m));
+
+    /* the floor, pushed by the pulse; it sinks out of sight as the tide rises */
+    const fy = cy + R0 * 1.12;
+    g.globalAlpha = (0.25 + 0.5 * pulse) * (1 - ss(0.35, 0.8, m)); g.strokeStyle = NIGHT; g.lineWidth = 1.5;
+    g.beginPath();
+    for (let px = 0; px <= W + 4; px += 4) { const u = (px - cx) / R0, py = fy - R0 * 0.1 * pulse * Math.exp(-u * u * 5); px ? g.lineTo(px, py) : g.moveTo(px, py); }
+    g.stroke();
+
+    pings = pings.filter(p => wall - p.born < 5000);
+    if (!still) for (const p of pings) {
+      const age = (wall - p.born) / 5000;
+      g.globalAlpha = 0.7 * (1 - age) * (1 - age); g.strokeStyle = AMBER; g.lineWidth = 1;
+      g.beginPath(); g.ellipse(cx + p.x * Math.max(cx, W - cx), cy + R0 * 0.6 - p.h * R0 * 1.3, 3 + age * R0 * 0.2, 1.5 + age * R0 * 0.065, 0, 0, TAU); g.stroke();
+    }
+    /* the kick, at the centre */
+    if (playing && kickP > 0.01) { g.globalAlpha = 0.5 * kickP + 0.3 * ss(0.4, 0.65, m); g.fillStyle = AMBER; g.beginPath(); g.arc(cx, cy, 2 + 3.5 * kickP, 0, TAU); g.fill(); }
+
+    /* the circle itself: how far the track has gone, and the bar going round */
+    g.globalAlpha = 1; g.strokeStyle = LINE; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, R0, 0, TAU); g.stroke();
+    if (playing && vis) {
+      g.strokeStyle = AMBER; g.globalAlpha = 0.9;
+      g.beginPath(); g.arc(cx, cy, R0, TOP, TOP + TAU * Math.min(1, (vis.rel + phase) / vis.L)); g.stroke();
+      const a = TOP + TAU * phase;
+      g.fillStyle = WINE; g.globalAlpha = 1; g.beginPath(); g.arc(cx + R0 * Math.cos(a), cy + R0 * Math.sin(a), 3.5, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+    pulse *= 0.94; kickP *= 0.88;
+    if (playing || pings.length || rings.length || pulse > 0.01) requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('scroll', () => { if (!playing) draw(); }, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
+  tide.value = Math.round(x * 100); showDrift();
+  resize();
+})();
+</script>
+<script data-goatcounter="https://phonk.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
