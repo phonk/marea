@@ -10,13 +10,23 @@
 
 ## Play
 
-Tap the circle to start, tap again to stop. Everything else happens on its own: the tide rises and falls between the two moods at its own pace.
+Tap the page to start, tap again to stop. Everything else happens on its own: the tide rises and falls between the two moods at its own pace.
 
-The slider under the circle shows where the tide stands, between **onde** and **nebbia**. Drag it to hold the tide where you want — the label above switches from *drifting* to *held*. Let go, or tap it again, and the tide drifts on its own once more.
+The slider at the bottom shows where the tide stands, between **onde** and **nebbia**. Drag it to hold the tide where you want — the label above switches from *drifting* to *held*. Let go, or tap it again, and the tide drifts on its own once more.
 
 ## What you see
 
-The lines across the page are the voices of the music. At low tide, deep in onde, they stretch edge to edge, slow and wide. As the tide rises toward nebbia they gather inward and curl into rings inside the circle, in step with the beat.
+The page is a tide gauge. The bright line is the water: it stands where the tide is, and its shape is the chord that is sounding, one ripple per voice.
+
+Everything the music does leaves a line behind at that level, and the lines sink and fade:
+
+- a kick leaves a line with notches. The notches stay in the same places for a whole track, so they stack into veins; a new track moves them;
+- a dub chord leaves a pink line, and its echoes after it;
+- the slow pulse of onde leaves a soft line with a swell;
+- the high pings are grains of amber that drop on the water and go down with the rest;
+- the first line of a new track is amber.
+
+The amber stretch of the water is how far the track has gone, and the dot riding it is the bar. What is on the page is the record of the last minute or two of the piece, drawn by the piece, and it never comes out the same twice. Stop it and the drawing stays.
 
 ## Why it works
 

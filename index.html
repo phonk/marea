@@ -9,7 +9,7 @@
 <title>marea</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&display=swap">
 <style>
-/* Layout: one quiet column over a full-screen drawing. The lines of the music cross the whole page when it is ambient and gather into rings inside the circle as it turns into dub techno. One thin line under the circle says where the tide is */
+/* Layout: one quiet column of words over a full-screen drawing. The drawing is a tide gauge: a bright line of water that stands where the tide is, and under it the lines the music has left, sinking. The whole middle of the page starts and stops it; one thin line at the bottom says where the tide is */
 :root{
   --bg:#02040F; --ink:#E5DADA; --mute:#968E96; --line:#152139; --amber:#E59500; --wine:#D2577F; --night:#4A8CC4;
   --font:"Helvetica Neue","IBM Plex Sans",Helvetica,Arial,sans-serif;
@@ -18,7 +18,8 @@
 html,body{background:var(--bg)}
 body{color:var(--ink);font-family:var(--font);font-weight:400;font-size:16px;line-height:1.4;font-variant-numeric:tabular-nums;
   padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:16px 28px}
-.wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:20px;position:relative;z-index:1}
+.wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:20px;position:relative;z-index:1;min-height:calc(100vh - 44px);min-height:calc(100dvh - 44px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.cap,.tide,#drift,.foot{text-shadow:0 0 10px var(--bg),0 0 3px var(--bg)}
 #dial{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:block}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 
@@ -33,10 +34,9 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
 #sync.on{color:var(--amber)}
 #sync:focus-visible{outline:1px solid var(--amber);outline-offset:3px}
 
-.stage{display:block;width:100%;max-width:min(100%,54vh);aspect-ratio:1;margin:0 auto;position:relative;border-radius:50%;
-  -webkit-tap-highlight-color:transparent}
+.stage{display:block;width:100%;flex:1;min-height:36vh;position:relative;-webkit-tap-highlight-color:transparent}
 .stage:focus-visible{outline:1px solid var(--amber);outline-offset:3px}
-#tap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:300;font-size:1.9rem;letter-spacing:-.02em;
+#tap{position:absolute;left:50%;top:22%;transform:translate(-50%,-50%);font-weight:300;font-size:1.9rem;letter-spacing:-.02em;
   color:var(--mute);pointer-events:none}
 
 .cap{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:-6px;text-align:center;min-height:4.4rem}
@@ -86,7 +86,7 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
   <div class="cap">
     <span id="nowA" hidden>f min</span>
     <span id="nowB" hidden>track 1, bar 1 of 96 at 58 bpm</span>
-    <p class="hint" id="hint">Tap the circle. It starts as slow ambient, rises into dub techno and falls back, on its own.</p>
+    <p class="hint" id="hint">Tap the page. It starts as slow ambient, rises into dub techno and falls back, on its own, and draws what it plays.</p>
   </div>
 
   <div class="tide" id="tideRow">
@@ -647,23 +647,28 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
   tide.addEventListener('input', () => { hold = true; manual = tide.value / 100; if (!playing) { x = manual; draw(); } showDrift(); });
   driftBtn.addEventListener('click', () => { hold = !hold; if (hold) manual = x; showDrift(); });
 
-  /* ---------- the drawing: lines that cross the whole page at low tide and close into rings inside the circle at high tide ---------- */
+  /* ---------- the drawing: sediment. the page is a tide gauge seen from the side. the bright line is the water, and it
+     stands where the tide is; its shape is the chord that is sounding, one ripple per voice. everything the music does
+     leaves a line behind at that level - a kick, a pulse, a chord - and the lines sink and fade. what is on the page is
+     the record of the last minute or two of the piece, drawn by the piece, and it never comes out the same twice ---------- */
   const cv = $('dial'), g = cv.getContext('2d');
   const css = getComputedStyle(document.documentElement);
   const col = n => css.getPropertyValue('--' + n).trim();
-  const INK = col('ink'), LINE = col('line'), AMBER = col('amber'), WINE = col('wine'), NIGHT = col('night');
+  const INK = col('ink'), AMBER = col('amber'), WINE = col('wine'), NIGHT = col('night');
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const TAU = Math.PI * 2, TOP = -Math.PI / 2;
-  const REST = [{ n: -12, l: 0.5 }, { n: 0, l: 0.7 }, { n: 7, l: 0.4 }, { n: 15, l: 0.6, mel: true }, { n: 22, l: 0.35 }];
-  let W = 0, H = 0, cx = 0, cy = 0, R0 = 100, pings = [], rings = [], pulse = 0, kickP = 0, vis = null, xv = x, wallStart = 0, lastSec = -1;
+  const TAU = Math.PI * 2, hash = n => { const v = Math.sin(n * 127.1) * 43758.5453; return v - Math.floor(v); };
+  const REST = [{ n: -12, l: 0.5 }, { n: 0, l: 0.7 }, { n: 7, l: 0.4 }, { n: 15, l: 0.6 }, { n: 22, l: 0.35 }];
+  let W = 0, H = 0, pulse = 0, kickP = 0, vis = null, xv = x, wallStart = 0, lastSec = -1;
+  let strata = [], grains = [], echoes = [], veins = [0.23, 0.58, 0.81], water = null, clock = 0, lastWall = 0;
+  let lastDep = -9, lastKick = -9, depN = 0, barMark = null, virgin = true;
 
   function ui(on) {
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     btn.setAttribute('aria-label', on ? 'Stop' : 'Start');
     $('tap').hidden = on; $('hint').hidden = on;
     $('nowA').hidden = !on; $('nowB').hidden = !on; $('clock').hidden = !on;
-    if (on) { $('nowA').textContent = ' '; $('nowB').textContent = 'coming in'; $('clock').textContent = '00:00:00'; lastSec = -1; }
-    else { vis = null; pings = []; rings = []; pulse = 0; kickP = 0; requestAnimationFrame(draw); }
+    if (on) { $('nowA').textContent = ' '; $('nowB').textContent = 'coming in'; $('clock').textContent = '00:00:00'; lastSec = -1; virgin = false; lastWall = performance.now(); }
+    else { vis = null; echoes = []; barMark = null; pulse = 0; kickP = 0; requestAnimationFrame(draw); } // the drawing stays as it was left
   }
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -675,100 +680,140 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
     const p = n => String(n).padStart(2, '0');
     return p(Math.floor(sec / 3600)) + ':' + p(Math.floor(sec / 60) % 60) + ':' + p(sec % 60);
   }
-  /* one voice: a wavy line from edge to edge at m = 0, a ring at m = 1, a horseshoe in between */
-  function voice(n, l, alpha, color, seed, time, m) {
-    const h = clamp((n + 12) / 36, 0, 1), half = Math.max(cx, W - cx) + 4;
-    const y0 = cy + R0 * 0.84 - h * R0 * 1.8, amp = 2 + R0 * 0.065 * l, rk = R0 * (0.2 + 0.7 * h), e = m * m * (3 - 2 * m);
-    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = 1 + l * 0.8;
-    g.beginPath();
-    for (let i = 0; i <= 140; i++) {
-      const u = i / 140, lx = cx + half * (u * 2 - 1), v = (lx - cx) / R0;
-      const ly = y0 + amp * Math.sin(v * (2.2 + seed % 3) + time * (0.08 + (seed % 5) * 0.012) + seed) + amp * 0.4 * Math.sin(v * 5.3 - time * 0.05 + seed * 2);
-      const th = Math.PI / 2 + TAU * u, rr = rk + amp * 0.35 * Math.sin(th * 3 + time * 0.2 + seed);
-      const px = lerp(lx, cx + rr * Math.cos(th), e), py = lerp(ly, cy + rr * Math.sin(th), e);
-      i ? g.lineTo(px, py) : g.moveTo(px, py);
+  /* the shape of the water right now: every sounding voice is one ripple. low notes are long waves, high notes short ones,
+     and a voice that swells makes its ripple taller. the higher the tide, the tighter the surface is pulled */
+  function chord(now, time, m) {
+    const out = [], amp = (H / 700) * lerp(15, 5, m);
+    const add = (n, l, seed) => out.push({ f: TAU * (0.9 + clamp((n + 12) / 36, 0, 1) * 6.5), a: l, ph: seed * 1.7 + time * (0.07 + (seed % 5) * 0.014) * (seed % 2 ? 1 : -1) });
+    if (playing && decks.length) for (let d = 0; d < 2; d++) {
+      const dk = decks[d]; if (!dk.track) continue;
+      const lv = clamp(dk.out.gain.value, 0, 1);
+      dk.voices.forEach((v, k) => add(v.n, (now > v.ts ? 0.5 + 0.5 * Math.sin(TAU * (now - v.ts) / v.per) : 0.5) * lv, d * 7 + k * 3 + 1));
     }
-    g.stroke();
+    if (!out.length) REST.forEach((v, k) => add(v.n, v.l, k * 3 + 1));
+    const k = amp * 1.5 / Math.sqrt(out.length);
+    out.forEach(c => { c.a *= k; });
+    return out;
   }
+  /* how far a line stands above its level at u (0 left, 1 right): its ripples, the notches a kick cut, the swell of a pulse */
+  function lineY(s, u) {
+    let y = 0;
+    for (const c of s.comps) y += c.a * Math.sin(c.f * u + c.ph);
+    for (const n of s.notches) { const d = Math.abs(u - n[0]) * W / 9; if (d < 1) y -= n[1] * (1 - d); }
+    if (s.bump) { const d = (u - s.bump[0]) / 0.11; y -= s.bump[1] * Math.exp(-d * d); }
+    return y;
+  }
+  function deposit(color, a, more) {
+    const last = strata[strata.length - 1];
+    if (last && clock - lastDep < 0.07) { // two things at the same instant are one line
+      if (more.notches) last.notches = more.notches;
+      if (more.bump) last.bump = more.bump;
+      if (color !== INK) last.col = color;
+      last.a = Math.max(last.a, a); mark(last); return;
+    }
+    const s = { y: water, born: clock, comps: more.comps, notches: more.notches || [], bump: more.bump || null, col: color, a, w: 1 };
+    strata.push(s); lastDep = clock; depN++; mark(s);
+    if (strata.length > 320) strata.shift();
+  }
+  /* the first line of a bar is a little stronger; the first line of a new track is amber, a seam in the rock */
+  function mark(s) {
+    if (!barMark || clock - barMark.t > 0.15) return;
+    if (barMark.first) { s.col = AMBER; s.a = 0.9; s.w = 1.3; } else s.a = Math.max(s.a, 0.62);
+    barMark = null;
+  }
+  /* before the first start there is no past yet: lay down a quiet one, so the page is not empty */
+  function seed(comps) {
+    strata = [];
+    for (let i = 26; i >= 1; i--) strata.push({ y: water + i * (7 + i * 0.75), born: 0, comps: comps.map(c => ({ f: c.f, a: c.a * (0.5 + hash(i * 3 + c.f)), ph: c.ph + i * 0.37 })),
+      notches: [], bump: i % 6 === 2 ? [hash(i), 9] : null, col: i === 14 ? AMBER : i % 9 === 4 ? WINE : INK, a: i === 14 ? 0.8 : 0.4, w: 1 });
+  }
+
   function draw() {
-    const wall = performance.now(), box = btn.getBoundingClientRect();
-    cx = box.left + box.width / 2; cy = box.top + box.height / 2; R0 = box.width * 0.46;
+    const wall = performance.now(), dt = Math.min(0.1, (wall - lastWall) / 1000), box = btn.getBoundingClientRect();
+    lastWall = wall;
+    const scale = H / 700, SINK = clamp(H / 55, 9, 18), time = still ? 0 : wall / 1000;
     let now = 0, phase = 0;
+    xv += (x - xv) * (playing ? 0.02 : 1);
+    const m = xv, low = box.bottom - box.height * 0.06, high = box.top + box.height * 0.14, target = lerp(low, high, m);
+    /* the water follows the tide, but never falls faster than its own sediment sinks: lines must not cross */
+    if (water === null || !playing) water = target;
+    else water += clamp(target - water, -70 * dt, SINK * 0.7 * dt);
+
     if (playing && ac) {
+      clock += dt;
       now = ac.currentTime - (ac.outputLatency || 0);
+      const comps = () => chord(now, time, m);
       while (events.length && events[0].t <= now) {
         const e = events.shift();
-        if (e.kind === 'pulse') pulse = Math.max(pulse, e.vel);
-        else if (e.kind === 'kick') kickP = Math.max(kickP, e.lv);
-        else if (e.kind === 'ping') pings.push({ born: wall, x: rnd(-0.9, 0.9), h: e.h });
-        else if (e.kind === 'stab') { if (!still) for (let n = 0, a = e.vel * 0.42; n < 7 && a > 0.03; n++, a *= e.fb) rings.push({ born: wall + n * e.d * 1000, a }); }
+        if (e.kind === 'pulse') {
+          pulse = Math.max(pulse, e.vel);
+          if (clock - lastKick > 0.1) deposit(INK, 0.26 + 0.3 * e.vel, { comps: comps(), bump: [0.12 + 0.76 * hash(depN * 1.3), (6 + 15 * e.vel) * scale] });
+        } else if (e.kind === 'kick') {
+          kickP = Math.max(kickP, e.lv); lastKick = clock;
+          deposit(INK, 0.3 + 0.2 * e.lv, { comps: comps(), notches: veins.map(v => [v, (3 + 10 * e.lv) * scale]) });
+        } else if (e.kind === 'stab') {
+          deposit(WINE, 0.2 + 0.45 * e.vel, { comps: comps() });
+          for (let n = 1, a = e.vel * 0.4 * e.fb; n < 5 && a > 0.06; n++, a *= e.fb) echoes.push({ at: clock + n * e.d, a });
+        } else if (e.kind === 'ping') grains.push({ u: rnd(0.04, 0.96), y: water, born: clock });
         else if (e.kind === 'bar') {
-          vis = e;
+          if (!vis || vis.track !== e.track) veins = Array.from({ length: 3 + e.track % 4 }, (_, i) => 0.06 + 0.88 * hash(e.track * 13.7 + i * 3.1));
+          vis = e; barMark = { t: clock, first: e.rel === 0 };
+          const last = strata[strata.length - 1]; if (last && clock - lastDep < 0.05) mark(last);
           $('nowA').textContent = e.key;
           $('nowB').textContent = 'track ' + e.track + ', bar ' + (e.rel + 1) + ' of ' + e.L + ' at ' + Math.round(e.x < 0.45 ? e.bpm / 2 : e.bpm) + ' bpm';
           if (!hold && document.activeElement !== tide) tide.value = Math.round(e.x * 100);
         }
       }
+      echoes = echoes.filter(e => { if (e.at > clock) return true; deposit(WINE, e.a, { comps: comps() }); return false; });
+      /* a bar in which nothing struck still leaves its line */
+      if (barMark && clock - barMark.t >= 0.15) { if (lastDep < barMark.t - 0.05) { barMark.t = clock; deposit(INK, 0.3, { comps: comps() }); } barMark = null; }
       if (vis && !still) phase = clamp((now - vis.t) / vis.dur, 0, 1);
       const sec = Math.floor((wall - wallStart) / 1000);
       if (sec !== lastSec) { lastSec = sec; $('clock').textContent = fmt(sec); }
     }
-    xv += (x - xv) * (playing ? 0.02 : 1);
-    const m = xv, time = still ? 0 : wall / 1000, far = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy));
-    g.clearRect(0, 0, W, H);
+    const liveC = chord(now, time, m);
+    if (virgin && !playing) seed(liveC);
 
-    /* the glow comes from below at low tide and from the centre of the circle at high tide */
-    const gy = lerp(cy + R0 * 1.4, cy, m), gr = lerp(Math.max(W, R0 * 2.4), R0 * 1.1, m);
-    const grad = g.createRadialGradient(cx, gy, 0, cx, gy, gr);
+    g.clearRect(0, 0, W, H);
+    /* light in the water, pushed by the pulse and the kick */
+    const grad = g.createRadialGradient(W / 2, water + H * 0.3, 0, W / 2, water + H * 0.3, Math.max(W, H) * 0.75);
     grad.addColorStop(0, NIGHT); grad.addColorStop(1, 'rgba(74,140,196,0)');
     g.globalAlpha = 0.09 + 0.2 * Math.max(pulse, kickP * 0.6) + (playing ? 0.04 : 0); g.fillStyle = grad; g.fillRect(0, 0, W, H);
 
-    /* echoes leave the centre and die on their way out of the page */
-    rings = rings.filter(r => (wall - r.born) / 1000 < 6);
-    for (const r of rings) {
-      const age = (wall - r.born) / 1000; if (age < 0) continue;
-      const rr = R0 * 0.1 + age * (R0 / 4.6), fade = 1 - rr / far;
-      if (fade > 0) { g.globalAlpha = r.a * fade * fade * (0.25 + 0.75 * m); g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.stroke(); }
+    /* the sediment */
+    const NP = clamp(Math.round(W / 8), 60, 170), depth = H - water + 20;
+    strata = strata.filter(s => s.y + (clock - s.born) * SINK < H + 30);
+    for (const s of strata) {
+      const y = s.y + (clock - s.born) * SINK, f = clamp(1 - (y - water) / depth, 0, 1), a = s.a * Math.pow(f, 1.5);
+      if (a < 0.012) continue;
+      g.globalAlpha = a; g.strokeStyle = s.col; g.lineWidth = s.w; g.beginPath();
+      for (let i = 0; i <= NP; i++) { const u = i / NP; i ? g.lineTo(u * W, y + lineY(s, u)) : g.moveTo(0, y + lineY(s, u)); }
+      g.stroke();
+    }
+    /* the high pings are grains of amber: they drop on the water and go down with the rest */
+    grains = grains.filter(p => p.y + (clock - p.born) * SINK < H + 10);
+    for (const p of grains) {
+      const age = clock - p.born, y = p.y + age * SINK, f = clamp(1 - (y - water) / depth, 0, 1);
+      g.globalAlpha = 0.95 * f; g.fillStyle = AMBER; g.beginPath(); g.arc(p.u * W, y, 1.7, 0, TAU); g.fill();
+      if (age < 0.9 && !still) { g.globalAlpha = 0.7 * (1 - age / 0.9); g.strokeStyle = AMBER; g.lineWidth = 1; g.beginPath(); g.ellipse(p.u * W, p.y, 3 + age * 26, 1 + age * 7, 0, 0, TAU); g.stroke(); }
     }
 
-    if (playing && decks.length) {
-      for (let d = 0; d < 2; d++) {
-        const dk = decks[d]; if (!dk.track) continue;
-        const lv = clamp(dk.out.gain.value, 0, 1);
-        dk.voices.forEach((v, k) => {
-          const l = now > v.ts ? 0.5 + 0.5 * Math.sin(TAU * (now - v.ts) / v.per) : 0.5;
-          voice(v.n, l, (0.1 + 0.6 * l) * lv, v.mel ? WINE : INK, d * 7 + k * 3 + 1, time, m);
-        });
-      }
-    } else REST.forEach((v, k) => voice(v.n, v.l, 0.12 + 0.3 * v.l, v.mel ? WINE : INK, k * 3 + 1, 0, m));
-
-    /* the floor, pushed by the pulse; it sinks out of sight as the tide rises */
-    const fy = cy + R0 * 1.12;
-    g.globalAlpha = (0.25 + 0.5 * pulse) * (1 - ss(0.35, 0.8, m)); g.strokeStyle = NIGHT; g.lineWidth = 1.5;
-    g.beginPath();
-    for (let px = 0; px <= W + 4; px += 4) { const u = (px - cx) / R0, py = fy - R0 * 0.1 * pulse * Math.exp(-u * u * 5); px ? g.lineTo(px, py) : g.moveTo(px, py); }
-    g.stroke();
-
-    pings = pings.filter(p => wall - p.born < 5000);
-    if (!still) for (const p of pings) {
-      const age = (wall - p.born) / 5000;
-      g.globalAlpha = 0.7 * (1 - age) * (1 - age); g.strokeStyle = AMBER; g.lineWidth = 1;
-      g.beginPath(); g.ellipse(cx + p.x * Math.max(cx, W - cx), cy + R0 * 0.6 - p.h * R0 * 1.3, 3 + age * R0 * 0.2, 1.5 + age * R0 * 0.065, 0, 0, TAU); g.stroke();
-    }
-    /* the kick, at the centre */
-    if (playing && kickP > 0.01) { g.globalAlpha = 0.5 * kickP + 0.3 * ss(0.4, 0.65, m); g.fillStyle = AMBER; g.beginPath(); g.arc(cx, cy, 2 + 3.5 * kickP, 0, TAU); g.fill(); }
-
-    /* the circle itself: how far the track has gone, and the bar going round */
-    g.globalAlpha = 1; g.strokeStyle = LINE; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, R0, 0, TAU); g.stroke();
+    /* the water itself */
+    const live = { comps: liveC, notches: kickP > 0.02 ? veins.map(v => [v, 11 * kickP * scale]) : [], bump: pulse > 0.02 ? [0.5, 16 * pulse * scale] : null };
+    const trace = () => { g.beginPath(); for (let i = 0; i <= NP; i++) { const u = i / NP; i ? g.lineTo(u * W, water + lineY(live, u)) : g.moveTo(0, water + lineY(live, u)); } g.stroke(); };
+    g.globalAlpha = 0.95; g.strokeStyle = INK; g.lineWidth = 1.4; trace();
     if (playing && vis) {
-      g.strokeStyle = AMBER; g.globalAlpha = 0.9;
-      g.beginPath(); g.arc(cx, cy, R0, TOP, TOP + TAU * Math.min(1, (vis.rel + phase) / vis.L)); g.stroke();
-      const a = TOP + TAU * phase;
-      g.fillStyle = WINE; g.globalAlpha = 1; g.beginPath(); g.arc(cx + R0 * Math.cos(a), cy + R0 * Math.sin(a), 3.5, 0, TAU); g.fill();
+      /* how far the track has gone is the amber stretch of the water; the bar is the dot that rides it */
+      g.save(); g.beginPath(); g.rect(0, 0, W * Math.min(1, (vis.rel + phase) / vis.L), H); g.clip();
+      g.globalAlpha = 1; g.strokeStyle = AMBER; trace(); g.restore();
+      g.globalAlpha = 1; g.fillStyle = WINE; g.beginPath(); g.arc(phase * W, water + lineY(live, phase), 3.5, 0, TAU); g.fill();
     }
+    /* the gauge: where the water can stand, from onde at the bottom to nebbia at the top */
+    g.globalAlpha = 0.22; g.strokeStyle = INK; g.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) { const y = Math.round(lerp(low, high, i / 10)) + 0.5; g.beginPath(); g.moveTo(0, y); g.lineTo(i % 5 ? 7 : 14, y); g.stroke(); }
     g.globalAlpha = 1;
     pulse *= 0.94; kickP *= 0.88;
-    if (playing || pings.length || rings.length || pulse > 0.01) requestAnimationFrame(draw);
+    if (playing) requestAnimationFrame(draw);
   }
 
   window.addEventListener('resize', resize);
