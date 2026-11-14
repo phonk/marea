@@ -71,7 +71,7 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
   <header>
     <div class="titleblock">
       <h1>marea</h1>
-      <span class="tag">never-ending tide of ambient and dub techno</span>
+      <span class="tag">a soundtrack for flow</span>
     </div>
     <div class="side">
       <span id="clock" hidden>00:00:00</span>
@@ -497,7 +497,7 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
     if (!('mediaSession' in navigator)) return;
     try {
       if (on) {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: 'marea', artist: 'never-ending tide of ambient and dub techno' });
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'marea', artist: 'a soundtrack for flow' });
         navigator.mediaSession.setActionHandler('play', () => { if (!playing) start(); });
         navigator.mediaSession.setActionHandler('pause', () => { if (playing) stop(); });
         navigator.mediaSession.setActionHandler('stop', () => { if (playing) stop(); });

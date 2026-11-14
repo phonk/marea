@@ -1,6 +1,6 @@
 # marea
 
-*never-ending tide of ambient and dub techno*
+*a soundtrack for flow*
 
 [nebbia](https://phonk.github.io/nebbia/) and [onde](https://phonk.github.io/onde/) as one piece: it drifts on its own between the two, slow ambient rising into dub techno and falling back, never the same way twice. One HTML file, no samples, no dependencies, no install.
 
