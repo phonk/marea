@@ -27,6 +27,11 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
 .titleblock{display:flex;flex-direction:column;gap:2px}
 .tag{font-size:.78rem;color:var(--mute);letter-spacing:.02em}
 #clock{color:var(--mute);font-size:.95rem}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+#sync{color:var(--mute);font-size:.78rem;letter-spacing:.02em;padding:4px 0;background:none;border:0;font:inherit;cursor:pointer}
+#sync:hover{color:var(--ink)}
+#sync.on{color:var(--amber)}
+#sync:focus-visible{outline:1px solid var(--amber);outline-offset:3px}
 
 .stage{display:block;width:100%;max-width:min(100%,54vh);aspect-ratio:1;margin:0 auto;position:relative;border-radius:50%;
   -webkit-tap-highlight-color:transparent}
@@ -68,7 +73,10 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
       <h1>marea</h1>
       <span class="tag">never-ending tide of ambient and dub techno</span>
     </div>
-    <span id="clock" hidden>00:00:00</span>
+    <div class="side">
+      <span id="clock" hidden>00:00:00</span>
+      <button id="sync" type="button" aria-label="MIDI clock sync: off">sync off</button>
+    </div>
   </header>
 
   <button class="stage" id="toggle" type="button" aria-pressed="false" aria-label="Start">
@@ -463,8 +471,10 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
     while (nextTime < now + ahead) {
       const el = nextTime - t0;
       bpmNow = baseBpm + 3 * Math.sin(el / 143) + 1.5 * Math.sin(el / 60);
+      if (sync === 'in' && extBpm) bpmNow = extBpm;
       const sd = 60 / bpmNow / 4, bar = Math.floor(step / 16), s = step % 16;
       if (s === 0) onBar(bar, nextTime, sd * 16);
+      if (sync === 'out') clockOut(nextTime, sd, s);
       decks[0].playStep(bar, s, nextTime, sd);
       decks[1].playStep(bar, s, nextTime, sd);
       nextTime += sd; step++;
@@ -504,6 +514,63 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
   }
   document.addEventListener('visibilitychange', onReturn);
   window.addEventListener('pageshow', onReturn); window.addEventListener('focus', onReturn);
+  /* ---------- MIDI clock: send it (out) or follow it (in) ---------- */
+  /* the step clock always runs near the nebbia-side tempo, however low the tide: onde's half-time feel
+     comes from playing half as often on the same grid, so one steady 24ppqn clock covers both */
+  let midi = null, sync = 'off', extBpm = 0, outRunning = false;
+  const ext = { n: 0, last: 0, per: 0, base: 0 };
+  const stamp = () => { try { const o = ac.getOutputTimestamp(); if (o && o.performanceTime > 0) return o; } catch (e) {} return { contextTime: ac.currentTime, performanceTime: performance.now() }; };
+  const toPerf = t => { const o = stamp(); return o.performanceTime + (t - o.contextTime) * 1000; };
+  const toAudio = ms => { const o = stamp(); return o.contextTime + (ms - o.performanceTime) / 1000; };
+  function sendAll(bytes, when) {
+    if (!midi) return;
+    midi.outputs.forEach(o => { try { when ? o.send(bytes, when) : o.send(bytes); } catch (e) {} });
+  }
+  /* 24 clocks per quarter note: six for every sixteenth, starting on a bar line */
+  function clockOut(t, sd, s) {
+    if (!outRunning) { if (s !== 0) return; outRunning = true; sendAll([0xFA], toPerf(t) - 1); }
+    for (let k = 0; k < 6; k++) sendAll([0xF8], toPerf(t + k * sd / 6));
+  }
+  function clockStop() { if (outRunning) { outRunning = false; sendAll([0xFC]); } }
+  function onMidi(e) {
+    if (sync !== 'in' || !e.data) return;
+    const b = e.data[0];
+    if (b === 0xFA) { ext.n = 0; ext.last = 0; if (!playing) { start(); ext.base = 0; } else ext.base = Math.ceil(step / 16) * 16; return; }
+    if (b === 0xFB) { if (!playing) { start(); ext.n = 0; ext.base = 0; } return; }
+    if (b === 0xFC) { if (playing) stop(); return; }
+    if (b !== 0xF8) return;
+    const now = e.timeStamp || performance.now();
+    if (ext.last) { const d = now - ext.last; if (d > 2 && d < 250) ext.per = ext.per ? ext.per + (d - ext.per) * 0.08 : d; }
+    ext.last = now;
+    if (ext.per) extBpm = clamp(60000 / (ext.per * 24), 60, 200);
+    if (playing && ac && ac.state === 'running' && ext.per && ext.n % 6 === 0) {
+      const sd = ext.per * 6 / 1000, ta = toAudio(now), n16 = ext.n / 6;
+      let want = ta + (step - ext.base - n16) * sd, err = want - nextTime;
+      if (Math.abs(err) > 0.06) {   /* far off: line up on the nearest bar, never skipping a step */
+        ext.base += 16 * Math.round(err / (16 * sd));
+        want = ta + (step - ext.base - n16) * sd;
+        while (want < ac.currentTime + 0.03) { ext.base -= 16; want += 16 * sd; }
+        nextTime = want;
+      } else nextTime += err * 0.2;
+    }
+    ext.n++;
+  }
+  function wire() { if (midi) midi.inputs.forEach(i => { i.onmidimessage = onMidi; }); }
+  function showSync(txt) {
+    const b = $('sync'); b.textContent = txt || ('sync ' + sync); b.classList.toggle('on', sync !== 'off');
+    b.setAttribute('aria-label', 'MIDI clock sync: ' + sync);
+  }
+  async function nextSync() {
+    const to = sync === 'off' ? 'out' : sync === 'out' ? 'in' : 'off';
+    if (to !== 'off' && !midi) {
+      try { midi = await navigator.requestMIDIAccess(); midi.onstatechange = wire; }
+      catch (e) { midi = null; showSync('no midi here'); setTimeout(() => showSync(), 1800); return; }
+    }
+    if (sync === 'out') clockStop();
+    sync = to; extBpm = 0; ext.n = 0; ext.last = 0; ext.per = 0; ext.base = step;
+    wire(); showSync();
+  }
+  $('sync').addEventListener('click', nextSync);
 
   function start() {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
@@ -557,6 +624,7 @@ h1{font-weight:300;font-size:1.5rem;letter-spacing:-.01em;margin:0}
   }
   function stop() {
     playing = false;
+    clockStop();
     if (worker) { worker.postMessage('halt'); worker.terminate(); worker = null; }
     clearInterval(fallbackTimer);
     const old = ac; ac = null;
